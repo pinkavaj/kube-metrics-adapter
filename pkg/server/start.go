@@ -175,6 +175,14 @@ func (o AdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan struct
 		}
 	}
 
+	// register JSON metric collector
+	jsonPlugin, err := collector.NewJSONCollectorPlugin(client)
+	if err != nil {
+		return fmt.Errorf("failed to initialize JSON collector plugin: %v", err)
+	}
+
+	collectorFactory.RegisterExternalCollector([]string{collector.JSONMetricName}, jsonPlugin)
+
 	// register generic pod collector
 	err = collectorFactory.RegisterPodsCollector("", collector.NewPodCollectorPlugin(client))
 	if err != nil {

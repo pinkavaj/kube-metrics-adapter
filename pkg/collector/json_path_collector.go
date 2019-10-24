@@ -11,8 +11,30 @@ import (
 	"time"
 
 	"github.com/oliveagle/jsonpath"
+	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
+
+const (
+	JSONMetricName          = "json-query"
+)
+
+type JSONCollectorPlugin struct {
+	client  kubernetes.Interface
+}
+
+type JSONCollector struct {
+	client  kubernetes.Interface
+	getter  *JSONPathMetricsGetter
+
+	metric          autoscalingv2.MetricIdentifier
+	interval        time.Duration
+	hpa             *autoscalingv2.HorizontalPodAutoscaler
+}
 
 // JSONPathMetricsGetter is a metrics getter which looks up pod metrics by
 // querying the pods metrics endpoint and lookup the metric value as defined by
@@ -24,6 +46,39 @@ type JSONPathMetricsGetter struct {
 	path       string
 	port       int
 	aggregator string
+}
+
+func NewJSONCollectorPlugin(client kubernetes.Interface) (*JSONCollectorPlugin, error) {
+	return &JSONCollectorPlugin{
+		client:  client,
+	}, nil
+}
+
+func (p *JSONCollectorPlugin) NewCollector(hpa *autoscalingv2.HorizontalPodAutoscaler, config *MetricConfig, interval time.Duration) (Collector, error) {
+	return NewJSONCollector(p.client, hpa, config, interval)
+}
+
+
+func NewJSONCollector(client kubernetes.Interface, hpa *autoscalingv2.HorizontalPodAutoscaler, config *MetricConfig, interval time.Duration) (*JSONCollector, error) {
+	getter, err := NewJSONPathMetricsGetter(config.Config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if config.Type != autoscalingv2.ExternalMetricSourceType {
+		return nil, fmt.Errorf("Only external metric type is supported")
+	}
+
+	c := &JSONCollector{
+		client:     client,
+		interval:   interval,
+		metric:     config.Metric,
+		hpa:        hpa,
+		getter:     getter,
+	}
+
+	return c, nil
 }
 
 // NewJSONPathMetricsGetter initializes a new JSONPathMetricsGetter.
@@ -82,18 +137,6 @@ func (g *JSONPathMetricsGetter) GetPodMetric(pod *corev1.Pod) (float64, error) {
 	return ExtractJSONMetric(g, data);
 }
 
-// GetPodMetric gets metric from pod by fetching json metrics from the pods metric
-// endpoint and extracting the desired value using the specified json path
-// query.
-func (g *JSONPathMetricsGetter) GetHostMetric() (float64, error) {
-	data, err := getJsonMetrics(g.scheme, g.host, g.path, g.port)
-	if err != nil {
-		return 0, err
-	}
-
-	return ExtractJSONMetric(g, data);
-}
-
 func ExtractJSONMetric(g *JSONPathMetricsGetter, data []byte) (float64, error) {
 	// parse data
 	var jsonData interface{}
@@ -123,6 +166,49 @@ func ExtractJSONMetric(g *JSONPathMetricsGetter, data []byte) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unsupported type %T", res)
 	}
+}
+
+func (c *JSONCollector) GetMetrics() ([]CollectedMetric, error) {
+
+	data, err := getJsonMetrics(c.getter.scheme, c.getter.host, c.getter.path, c.getter.port)
+	if err != nil {
+		return nil, err
+	}
+
+	sampleValue, err :=  ExtractJSONMetric(c.getter, data);
+	if err != nil {
+		return nil, err
+	}
+
+	/*if c.perReplica {
+		// get current replicas for the targeted scale object. This is used to
+		// calculate an average metric instead of total.
+		// targetAverageValue will be available in Kubernetes v1.12
+		// https://github.com/kubernetes/kubernetes/pull/64097
+		replicas, err := targetRefReplicas(c.client, c.hpa)
+		if err != nil {
+			return nil, err
+		}
+		sampleValue = model.SampleValue(float64(sampleValue) / float64(replicas))
+	}*/
+
+	var metricValue CollectedMetric
+
+	metricValue = CollectedMetric{
+		Type: autoscalingv2.ExternalMetricSourceType,
+		External: external_metrics.ExternalMetricValue{
+			MetricName:   c.metric.Name,
+			MetricLabels: c.metric.Selector.MatchLabels,
+			Timestamp:    metav1.Time{Time: time.Now().UTC()},
+			Value:        *resource.NewMilliQuantity(int64(sampleValue*1000), resource.DecimalSI),
+		},
+	}
+
+	return []CollectedMetric{metricValue}, nil
+}
+
+func (c *JSONCollector) Interval() time.Duration {
+	return c.interval
 }
 
 // getPodMetrics returns the content of the host metrics endpoint.
