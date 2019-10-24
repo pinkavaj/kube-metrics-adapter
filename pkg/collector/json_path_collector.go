@@ -20,6 +20,7 @@ import (
 type JSONPathMetricsGetter struct {
 	jsonPath   *jsonpath.Compiled
 	scheme     string
+	host       string
 	path       string
 	port       int
 	aggregator string
@@ -40,6 +41,10 @@ func NewJSONPathMetricsGetter(config map[string]string) (*JSONPathMetricsGetter,
 
 	if v, ok := config["scheme"]; ok {
 		getter.scheme = v
+	}
+
+	if v, ok := config["host"]; ok {
+		getter.host = v
 	}
 
 	if v, ok := config["path"]; ok {
@@ -70,6 +75,18 @@ func (g *JSONPathMetricsGetter) GetPodMetric(pod *corev1.Pod) (float64, error) {
 	}
 
 	data, err := getJsonMetrics(g.scheme, pod.Status.PodIP, g.path, g.port)
+	if err != nil {
+		return 0, err
+	}
+
+	return ExtractJSONMetric(g, data);
+}
+
+// GetPodMetric gets metric from pod by fetching json metrics from the pods metric
+// endpoint and extracting the desired value using the specified json path
+// query.
+func (g *JSONPathMetricsGetter) GetHostMetric() (float64, error) {
+	data, err := getJsonMetrics(g.scheme, g.host, g.path, g.port)
 	if err != nil {
 		return 0, err
 	}
