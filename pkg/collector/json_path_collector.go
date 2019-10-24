@@ -65,7 +65,11 @@ func NewJSONPathMetricsGetter(config map[string]string) (*JSONPathMetricsGetter,
 // endpoint and extracting the desired value using the specified json path
 // query.
 func (g *JSONPathMetricsGetter) GetMetric(pod *corev1.Pod) (float64, error) {
-	data, err := getPodMetrics(pod, g.scheme, g.path, g.port)
+	if pod.Status.PodIP == "" {
+		return 0, fmt.Errorf("pod %s/%s does not have a pod IP", pod.Namespace, pod.Namespace)
+	}
+
+	data, err := getJsonMetrics(g.scheme, pod.Status.PodIP, g.path, g.port)
 	if err != nil {
 		return 0, err
 	}
@@ -100,12 +104,8 @@ func (g *JSONPathMetricsGetter) GetMetric(pod *corev1.Pod) (float64, error) {
 	}
 }
 
-// getPodMetrics returns the content of the pods metrics endpoint.
-func getPodMetrics(pod *corev1.Pod, scheme, path string, port int) ([]byte, error) {
-	if pod.Status.PodIP == "" {
-		return nil, fmt.Errorf("pod %s/%s does not have a pod IP", pod.Namespace, pod.Namespace)
-	}
-
+// getPodMetrics returns the content of the host metrics endpoint.
+func getJsonMetrics(scheme, host, path string, port int) ([]byte, error) {
 	httpClient := &http.Client{
 		Timeout:   15 * time.Second,
 		Transport: &http.Transport{},
@@ -117,7 +117,7 @@ func getPodMetrics(pod *corev1.Pod, scheme, path string, port int) ([]byte, erro
 
 	metricsURL := url.URL{
 		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%d", pod.Status.PodIP, port),
+		Host:   fmt.Sprintf("%s:%d", host, port),
 		Path:   path,
 	}
 
