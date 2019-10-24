@@ -61,10 +61,10 @@ func NewJSONPathMetricsGetter(config map[string]string) (*JSONPathMetricsGetter,
 	return getter, nil
 }
 
-// GetMetric gets metric from pod by fetching json metrics from the pods metric
+// GetPodMetric gets metric from pod by fetching json metrics from the pods metric
 // endpoint and extracting the desired value using the specified json path
 // query.
-func (g *JSONPathMetricsGetter) GetMetric(pod *corev1.Pod) (float64, error) {
+func (g *JSONPathMetricsGetter) GetPodMetric(pod *corev1.Pod) (float64, error) {
 	if pod.Status.PodIP == "" {
 		return 0, fmt.Errorf("pod %s/%s does not have a pod IP", pod.Namespace, pod.Namespace)
 	}

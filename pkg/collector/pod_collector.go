@@ -40,7 +40,7 @@ type PodCollector struct {
 }
 
 type PodMetricsGetter interface {
-	GetMetric(pod *corev1.Pod) (float64, error)
+	GetPodMetric(pod *corev1.Pod) (float64, error)
 }
 
 func NewPodCollector(client kubernetes.Interface, hpa *autoscalingv2.HorizontalPodAutoscaler, config *MetricConfig, interval time.Duration) (*PodCollector, error) {
@@ -91,7 +91,7 @@ func (c *PodCollector) GetMetrics() ([]CollectedMetric, error) {
 
 	// TODO: get metrics in parallel
 	for _, pod := range pods.Items {
-		value, err := c.Getter.GetMetric(&pod)
+		value, err := c.Getter.GetPodMetric(&pod)
 		if err != nil {
 			c.logger.Errorf("Failed to get metrics from pod '%s/%s': %v", pod.Namespace, pod.Name, err)
 			continue
