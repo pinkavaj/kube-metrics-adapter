@@ -74,9 +74,13 @@ func (g *JSONPathMetricsGetter) GetPodMetric(pod *corev1.Pod) (float64, error) {
 		return 0, err
 	}
 
+	return ExtractJSONMetric(g, data);
+}
+
+func ExtractJSONMetric(g *JSONPathMetricsGetter, data []byte) (float64, error) {
 	// parse data
 	var jsonData interface{}
-	err = json.Unmarshal(data, &jsonData)
+	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
 		return 0, err
 	}
