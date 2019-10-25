@@ -1,0 +1,61 @@
+---
+stages:
+  - pre-build
+  - build
+  - test
+  - publish
+  - deploy
+
+variables:
+  # This registry is used for production images only.
+  # REGISTRY_PROD: 489740298329.dkr.ecr.eu-west-1.amazonaws.com/rossum/morgan-api
+  # Default registry for all (even untested) images
+  APP_IMAGE_BRANCH_LATEST: ${CI_REGISTRY_IMAGE}/app:br.${CI_COMMIT_REF_SLUG}_latest
+  APP_IMAGE_BRANCH_SHA: ${CI_REGISTRY_IMAGE}/app:br.${CI_COMMIT_REF_SLUG}_sha.${CI_COMMIT_SHA}
+  APP_IMAGE_SHA: ${CI_REGISTRY_IMAGE}/app:sha.${CI_COMMIT_SHA}
+  APP_IMAGE_PRE_SHA: ${CI_REGISTRY_IMAGE}/app:pre_sha.${CI_COMMIT_SHA}
+  REGISTRY_BRANCH: ${CI_REGISTRY_IMAGE}/branch/${CI_COMMIT_REF_SLUG}
+  AWS_REGION: eu-west-1
+
+build:
+  stage: pre-build
+  image: golang
+  script:
+    - make build.linux
+  artifacts:
+    paths:
+      - build
+
+build-image:
+  stage: build
+  tags:
+    - docker
+  image: ${CI_REGISTRY}/common/gitlab-ci/docker-aws-cli:latest
+  script:
+    - IMAGE_DEVELOP=${CI_REGISTRY_IMAGE}/branch/develop:latest
+    - IMAGE_CACHE=${IMAGE_LATEST}
+    - docker login -u gitlab-ci-token -p ${CI_BUILD_TOKEN} ${CI_REGISTRY}
+    - test ${DISABLE_IMAGE_CACHE} || docker pull ${IMAGE_CACHE} || IMAGE_CACHE=${IMAGE_DEVELOP}
+    - test ${DISABLE_IMAGE_CACHE} || docker pull ${IMAGE_CACHE} || true
+    - docker build
+        -t ${APP_IMAGE_PRE_SHA}
+        --cache-from ${IMAGE_CACHE}
+        ${DISABLE_IMAGE_CACHE:+--no-cache}
+        .
+    - docker push ${APP_IMAGE_PRE_SHA}
+
+# Publish built and tested images from dev registry to development registry.
+publish-develop:
+  stage: publish
+  tags:
+    - docker
+  image: docker
+  script:
+    - docker login -u gitlab-ci-token -p ${CI_BUILD_TOKEN} ${CI_REGISTRY}
+    - docker pull ${APP_IMAGE_PRE_SHA}
+    - docker image tag ${APP_IMAGE_PRE_SHA} ${APP_IMAGE_SHA}
+    - docker push ${APP_IMAGE_SHA}
+    - docker image tag ${APP_IMAGE_SHA} ${APP_IMAGE_BRANCH_LATEST}
+    - docker push ${APP_IMAGE_BRANCH_LATEST}
+    - docker image tag ${APP_IMAGE_SHA} ${APP_IMAGE_BRANCH_SHA}
+    - docker push ${APP_IMAGE_BRANCH_SHA}
