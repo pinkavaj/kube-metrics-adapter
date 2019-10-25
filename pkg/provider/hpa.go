@@ -263,6 +263,7 @@ func (p *HPAProvider) collectMetrics(ctx context.Context) {
 
 // GetMetricByName gets a single metric by name.
 func (p *HPAProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+	log.Printf("XXXK 1\n")
 	metric := p.metricStore.GetMetricsByName(name, info)
 	if metric == nil {
 		return nil, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
@@ -273,19 +274,23 @@ func (p *HPAProvider) GetMetricByName(name types.NamespacedName, info provider.C
 // GetMetricBySelector returns metrics for namespaced resources by
 // label selector.
 func (p *HPAProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+	log.Printf("XXXK 6\n")
 	return p.metricStore.GetMetricsBySelector(namespace, selector, info), nil
 }
 
 // ListAllMetrics list all available metrics from the provicer.
 func (p *HPAProvider) ListAllMetrics() []provider.CustomMetricInfo {
+	log.Printf("XXXK 5\n")
 	return p.metricStore.ListAllMetrics()
 }
 
 func (p *HPAProvider) GetExternalMetric(namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
+	log.Printf("XXXK 4\n")
 	return p.metricStore.GetExternalMetric(namespace, metricSelector, info)
 }
 
 func (p *HPAProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
+	log.Printf("XXXK 3\n")
 	return p.metricStore.ListAllExternalMetrics()
 }
 
@@ -319,6 +324,7 @@ func (t *CollectorScheduler) Add(resourceRef resourceReference, typeName collect
 	t.Lock()
 	defer t.Unlock()
 
+	log.Printf("XXXK 2\n")
 	collectors, ok := t.table[resourceRef]
 	if !ok {
 		collectors = map[collector.MetricTypeName]context.CancelFunc{}
@@ -342,6 +348,8 @@ func (t *CollectorScheduler) Add(resourceRef resourceReference, typeName collect
 func collectorRunner(ctx context.Context, collector collector.Collector, metricsc chan<- metricCollection) {
 	for {
 		values, err := collector.GetMetrics()
+		log.Printf("XXXC collector %+v\n", values)
+		log.Printf("XXXC collector err %+v\n", err)
 
 		metricsc <- metricCollection{
 			Values: values,

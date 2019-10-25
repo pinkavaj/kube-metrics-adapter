@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/zalando-incubator/kube-metrics-adapter/pkg/annotations"
@@ -227,6 +228,7 @@ func ParseHPAMetrics(hpa *autoscalingv2.HorizontalPodAutoscaler) ([]*MetricConfi
 				config.Config[k] = v
 			}
 		}
+		log.Printf("XXXA HPA.Config=%+v\n", config.Config)
 		metricConfigs = append(metricConfigs, config)
 	}
 	return metricConfigs, nil

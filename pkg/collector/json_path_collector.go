@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -76,6 +77,7 @@ func NewJSONCollector(client kubernetes.Interface, hpa *autoscalingv2.Horizontal
 		}
 	}
 	config.Metric.Selector.MatchLabels = tmp
+	log.Printf("XXXY MatchLabels=%+v\n", config.Metric.Selector.MatchLabels)
 
 	if config.Type != autoscalingv2.ExternalMetricSourceType {
 		return nil, fmt.Errorf("Only external metric type is supported")
@@ -88,6 +90,8 @@ func NewJSONCollector(client kubernetes.Interface, hpa *autoscalingv2.Horizontal
 		hpa:        hpa,
 		getter:     getter,
 	}
+
+	log.Printf("XXXJ config=%+v\n", config.Config)
 
 	return c, nil
 }
@@ -181,13 +185,16 @@ func ExtractJSONMetric(g *JSONPathMetricsGetter, data []byte) (float64, error) {
 
 func (c *JSONCollector) GetMetrics() ([]CollectedMetric, error) {
 
+	log.Printf("XXX M scheme=%+v host=%+v path=%+v port=%+v\n", c.getter.scheme, c.getter.host, c.getter.path, c.getter.port)
 	data, err := getJsonMetrics(c.getter.scheme, c.getter.host, c.getter.path, c.getter.port)
 	if err != nil {
+		log.Printf("XXXE1")
 		return nil, err
 	}
 
 	sampleValue, err :=  ExtractJSONMetric(c.getter, data);
 	if err != nil {
+		log.Printf("XXXE2")
 		return nil, err
 	}
 
@@ -203,6 +210,7 @@ func (c *JSONCollector) GetMetrics() ([]CollectedMetric, error) {
 		sampleValue = model.SampleValue(float64(sampleValue) / float64(replicas))
 	}*/
 
+	log.Printf("XXXE0")
 	var metricValue CollectedMetric
 
 	metricValue = CollectedMetric{

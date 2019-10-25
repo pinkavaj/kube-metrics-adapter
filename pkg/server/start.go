@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -236,6 +237,7 @@ func (o AdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan struct
 	if !o.EnableExternalMetricsAPI {
 		externalMetricsProvider = nil
 	}
+	log.Printf("XXX %+v\n", o.EnableExternalMetricsAPI)
 
 	informer := informers.NewSharedInformerFactory(client, 0)
 

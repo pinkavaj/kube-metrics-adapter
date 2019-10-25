@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -124,6 +125,7 @@ func (s *MetricStore) insertExternalMetric(metric external_metrics.ExternalMetri
 	}
 
 	labelsKey := hashLabelMap(metric.MetricLabels)
+	log.Printf("XXXL1 labels=%+v name=%+v\n", metric.MetricLabels, metric.MetricName)
 
 	if metrics, ok := s.externalMetricsStore[metric.MetricName]; ok {
 		metrics[labelsKey] = storedMetric
@@ -233,6 +235,7 @@ func (s *MetricStore) ListAllMetrics() []provider.CustomMetricInfo {
 		}
 	}
 
+	log.Printf("XXX T %+v\n", metrics)
 	return metrics
 }
 
@@ -244,6 +247,8 @@ func (s *MetricStore) GetExternalMetric(namespace string, selector labels.Select
 	s.RLock()
 	defer s.RUnlock()
 
+	log.Printf("XXXS1match selector=%+v\n", selector)
+
 	if metrics, ok := s.externalMetricsStore[info.Metric]; ok {
 		for _, metric := range metrics {
 			if selector.Matches(labels.Set(metric.Value.MetricLabels)) {
@@ -252,6 +257,8 @@ func (s *MetricStore) GetExternalMetric(namespace string, selector labels.Select
 		}
 	}
 
+	log.Printf("XXXS1match matchedMetrics=%+v\n", matchedMetrics)
+
 	return &external_metrics.ExternalMetricValueList{Items: matchedMetrics}, nil
 }
 
@@ -259,6 +266,8 @@ func (s *MetricStore) GetExternalMetric(namespace string, selector labels.Select
 func (s *MetricStore) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	s.RLock()
 	defer s.RUnlock()
+
+	log.Printf("XXXS2 list\n")
 
 	metricsInfo := make([]provider.ExternalMetricInfo, 0, len(s.externalMetricsStore))
 

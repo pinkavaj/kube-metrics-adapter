@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -31,17 +32,20 @@ type AnnotationConfigMap map[MetricConfigKey]*AnnotationConfigs
 func (m AnnotationConfigMap) Parse(annotations map[string]string) error {
 	for key, val := range annotations {
 		if !strings.HasPrefix(key, customMetricsPrefix) {
+			log.Printf("XXXE AN0\n")
 			continue
 		}
 
 		parts := strings.Split(key, "/")
 		if len(parts) != 2 {
+			log.Printf("XXXE AN1\n")
 			// TODO: error?
 			continue
 		}
 
 		configs := strings.Split(parts[0], ".")
 		if len(configs) != 4 {
+			log.Printf("XXXE AN2\n")
 			// TODO: error?
 			continue
 		}
@@ -72,11 +76,13 @@ func (m AnnotationConfigMap) Parse(annotations map[string]string) error {
 
 		// TODO: fail if collector name doesn't match
 		if config.CollectorName != metricCollector {
+			log.Printf("XXXE AN3\n")
 			continue
 		}
 
 		if parts[1] == perReplicaMetricsConfKey {
 			config.PerReplica = true
+			log.Printf("XXXE AN4\n")
 			continue
 		}
 
@@ -89,6 +95,7 @@ func (m AnnotationConfigMap) Parse(annotations map[string]string) error {
 			continue
 		}
 
+		log.Printf("XXXE OK %+v\n", parts[1])
 		config.Configs[parts[1]] = val
 	}
 	return nil
@@ -97,5 +104,6 @@ func (m AnnotationConfigMap) Parse(annotations map[string]string) error {
 func (m AnnotationConfigMap) GetAnnotationConfig(metricName string, metricType autoscalingv2.MetricSourceType) (*AnnotationConfigs, bool) {
 	key := MetricConfigKey{MetricName: metricName, Type: metricType}
 	config, ok := m[key]
+	log.Printf("XXXF name=%+v type=%+v config=%+v err=%+v\n", metricName, metricType, config, ok)
 	return config, ok
 }
