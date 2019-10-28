@@ -79,6 +79,47 @@ HPA resource. They are configured based on HPA resources and started on-demand b
 The collectors are configured either simply based on the metrics defined in an
 HPA resource, or via additional annotations on the HPA resource.
 
+## JSON collector
+
+The JSON collector allows collect metric from any arbitrary service over HTTP.
+
+### Supported metrics
+
+TODO
+
+### Example
+
+This is an example of using the JSON collector to collect metrics from a json
+metrics endpoint on some existing service.
+
+```yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa
+  annotations:
+    metric-config.external.my-metric.json-query/host: service.my-namespace.svc
+    metric-config.external.my-metric.json-query/json-key: "$.mymetric.value"
+    metric-config.external.my-metric.json-query/path: /metrics
+    metric-config.external.my-metric.json-query/port: "8080"
+    metric-config.external.my-metric.json-query/scheme: "http"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: custom-metrics-consumer
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: External
+    external:
+      metricName: my-metric
+      targetAverageValue: 10
+      # FIXME: this is now required to exist and be empty
+      metricSelector:
+        matchLabels:
+```
+
 ## Pod collector
 
 The pod collector allows collecting metrics from each pod matched by the HPA.
