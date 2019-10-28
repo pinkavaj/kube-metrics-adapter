@@ -65,6 +65,10 @@ func NewJSONCollector(client kubernetes.Interface, hpa *autoscalingv2.Horizontal
 		return nil, err
 	}
 
+	if config.Metric.Selector == nil {
+		return nil, fmt.Errorf("selector for queue is not specified")
+	}
+
 	if config.Type != autoscalingv2.ExternalMetricSourceType {
 		return nil, fmt.Errorf("Only external metric type is supported")
 	}
