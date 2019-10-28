@@ -61,7 +61,6 @@ func (p *JSONCollectorPlugin) NewCollector(hpa *autoscalingv2.HorizontalPodAutos
 
 func NewJSONCollector(client kubernetes.Interface, hpa *autoscalingv2.HorizontalPodAutoscaler, config *MetricConfig, interval time.Duration) (*JSONCollector, error) {
 	getter, err := NewJSONPathMetricsGetter(config.Config)
-
 	if err != nil {
 		return nil, err
 	}
